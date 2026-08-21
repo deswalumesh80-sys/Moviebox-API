@@ -8,70 +8,76 @@ from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 # Telegram Credentials
 API_ID = 38398715
 API_HASH = "6d70e41f8c67908ed547e31c2cfe9c3a"
-BOT_TOKEN = "8588875170:AAE-2TF39moR_LksMVaYbxG5JLHB-pASoQM"
+BOT_TOKEN = "7843197474:AAHB-SHdt3XsSk_ZULtkwYvTSa-BIQ_DAKc"
 PORT = int(os.environ.get("PORT", 8080))
 
-bot = Client("moviebox_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+bot = Client("toji_shins_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-# Render ke liye Health Check Server
+# Health check route for Render
 async def handle_ping(request):
-    return web.Response(text="Moviebox Bot Engine is Running!", status=200)
+    return web.Response(text="Server is healthy and running!", status=200)
 
-# Moviebox API Search Logic
-def search_moviebox(query):
+def search_shins_moviebox(query):
     try:
-        url = f"https://moviebox.phimapi.com/api/search?keyword={query}"
-        res = requests.get(url, timeout=10).json()
-        items = res.get("data", {}).get("items", [])
-        return items[:6]
+        url = f"https://api.themoviedb.org/3/search/multi?query={query}&api_key=4b600a94b59fa8399f6b32df6ff09a5c"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        res = requests.get(url, headers=headers, timeout=8).json()
+        return res.get("results", [])[:6]
     except Exception:
         return []
 
 @bot.on_message(filters.command("start") & filters.private)
 async def start_cmd(c, m):
     await m.reply_text(
-        "🥷 **#Toji Moviebox Engine Online**\n\n"
-        "🍿 *Kisi bhi movie ya web series ka naam likhkar bhejein:*"
+        "🥷 **#Toji Shins Movie Engine Online**\n\n"
+        "🍿 *Kisi bhi movie ya series ka naam bhejein:*"
     )
 
 @bot.on_message(filters.private & ~filters.command("start"))
 async def handle_search(c, m):
     query = m.text.strip()
-    status_msg = await m.reply_text(f"🔍 **'{query}' search ho raha hai...**")
+    status_msg = await m.reply_text(f"🔍 **'{query}' dhoondh rahe hain...**")
     
-    results = search_moviebox(query)
+    results = search_shins_moviebox(query)
     
     if not results:
-        return await status_msg.edit_text("❌ **Koi file nahi mili!** Kripya spelling check karein.")
+        return await status_msg.edit_text("❌ **Koi result nahi mila!** Spelling check karein.")
     
     buttons = []
     for item in results:
-        title = item.get("name") or item.get("origin_name")
-        slug = item.get("slug")
-        link = f"https://moviebox.phimapi.com/movie/{slug}"
-        short_title = (title[:30] + "..") if len(title) > 30 else title
-        buttons.append([InlineKeyboardButton(f"🎬 {short_title}", url=link)])
+        title = item.get("title") or item.get("name") or item.get("original_title")
+        media_type = item.get("media_type", "movie")
+        media_id = item.get("id")
+        
+        if title and media_id:
+            stream_url = f"https://vidsrc.to/embed/{media_type}/{media_id}"
+            short_title = (title[:28] + "..") if len(title) > 28 else title
+            buttons.append([InlineKeyboardButton(f"🎬 {short_title} ({media_type.upper()})", url=stream_url)])
     
+    if not buttons:
+        return await status_msg.edit_text("❌ **Koi playable file nahi mili!**")
+        
     await status_msg.edit_text(
-        f"🍿 **Results for:** `{query}`\n\n⚡ *Provided by #Toji Moviebox Engine*",
+        f"🍿 **Results for:** `{query}`\n\n⚡ *Source: Shins Cloud Network*",
         reply_markup=InlineKeyboardMarkup(buttons)
     )
 
-async def main():
-    # Web server start (Render keep-alive)
+async def start_web_server():
     app = web.Application()
     app.router.add_get("/", handle_ping)
     runner = web.AppRunner(app)
     await runner.setup()
     site = web.TCPSite(runner, "0.0.0.0", PORT)
     await site.start()
-    
-    # Bot start
+
+async def main():
+    await start_web_server()
     await bot.start()
-    print(">>> Moviebox Bot is Live!")
+    print(">>> All Services Started!")
     await idle()
     await bot.stop()
 
 if __name__ == "__main__":
-    asyncio.run(main())
-  
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(main())
+    
