@@ -129,14 +129,4 @@ async def main():
 if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     loop.run_until_complete(main())
-```[span_1](start_span)[span_1](end_span)
-
-5. **Commit करें:** नीचे हरे रंग के **Commit changes...** बटन पर टैप कर दें।
-
----
-
-### Render पर स्टार्ट कमांड:
-Render में **Start Command** की जगह आपको यही लिखना होगा:
-```bash
-python3 bot.py
     
