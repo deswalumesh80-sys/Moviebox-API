@@ -8,7 +8,6 @@ from telebot.types import InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo
 
 sys.stdout.reconfigure(line_buffering=True)
 
-# Exact Credentials
 BOT_TOKEN = "8966860464:AAF3FDxZi5l9IR7IxiqK2LAo2qn_zqxVowA"
 PORT = int(os.environ.get("PORT", 8080))
 
@@ -20,121 +19,113 @@ class HealthServer(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
         self.end_headers()
-        self.wfile.write(b"Moviebox Engine Online & Active")
+        self.wfile.write(b"Toji Engine Active")
 
     def log_message(self, format, *args):
         return
 
 def start_http_server():
     server = HTTPServer(('0.0.0.0', PORT), HealthServer)
-    print(f"[HTTP] Render Server running on port {PORT}", flush=True)
+    print(f"[HTTP] Server listening on port {PORT}", flush=True)
     server.serve_forever()
 
-# Advanced TMDB + Multi-Source Search
-def search_titles(query):
+# TMDB Core Data
+def get_tmdb_data(query):
     try:
         url = f"https://api.themoviedb.org/3/search/multi?api_key=4b600a94b59fa8399f6b32df6ff09a5c&query={requests.utils.quote(query)}"
         res = requests.get(url, timeout=6).json()
-        results = []
-        for item in res.get("results", [])[:6]:
-            title = item.get("title") or item.get("name") or item.get("original_title")
-            media_type = item.get("media_type", "movie")
-            media_id = item.get("id")
-            release = item.get("release_date") or item.get("first_air_date") or ""
-            year = release.split("-")[0] if release else "N/A"
-            overview = item.get("overview", "No synopsis available.")[:150]
-            if title and media_id:
-                results.append({
-                    "id": media_id,
-                    "title": title,
-                    "year": year,
-                    "type": media_type,
-                    "desc": overview
-                })
-        return results
-    except Exception as e:
-        print(f"[SEARCH ERROR] {e}", flush=True)
+        return res.get("results", [])[:1]
+    except Exception:
         return []
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     markup = InlineKeyboardMarkup()
-    markup.row(InlineKeyboardButton("🔥 Trending Movies", url="https://vidsrc.to/trending/movie"))
-    markup.row(InlineKeyboardButton("⚡ Trending Series", url="https://vidsrc.to/trending/tv"))
-    bot.reply_to(
-        message,
-        "👋 *Moviebox Multi-Server Engine Online!*\n\n"
-        "Kisi bhi Movie ya Web Series ka naam likhein (Jaise: *Animal, War, Jawan, Loki*):",
-        reply_markup=markup
+    markup.row(InlineKeyboardButton("⚡ Quick Help", callback_data="help"), InlineKeyboardButton("👑 Admin Support", url="https://t.me/BotFather"))
+    markup.row(InlineKeyboardButton("💡 Movie Ideas", callback_data="ideas"), InlineKeyboardButton("💳 Upgrade Plan", callback_data="upgrade"))
+    
+    caption = (
+        "🥷 I am **#Toji v2.1**\n"
+        "⚡ **Unlimited files**\n"
+        "📥 **Get instant file**\n"
+        "💯 **100% Free, always**\n"
+        "👤 By **The Filmy Men**"
     )
+    bot.reply_to(message, caption, reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data in ["help", "ideas", "upgrade"])
+def handle_menu_clicks(call):
+    if call.data == "upgrade":
+        markup = InlineKeyboardMarkup()
+        markup.row(InlineKeyboardButton("1 Month - ₹50", callback_data="pay_50"), InlineKeyboardButton("2 Month - ₹90", callback_data="pay_90"))
+        markup.row(InlineKeyboardButton("3 Month - ₹140", callback_data="pay_140"), InlineKeyboardButton("4 Month - ₹190", callback_data="pay_190"))
+        bot.edit_message_text("🌸 **Premium Plans & Pricing** 🌸\n\n✅ Instant Movies\n✅ No Ads & Scan Audio\n\n👇 *Select Plan:*", chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
+    else:
+        bot.answer_callback_query(call.id, "Feature active! Type movie name to search.")
 
 @bot.message_handler(func=lambda msg: True)
 def handle_search(message):
     query = message.text.strip()
-    status = bot.reply_to(message, f"🔍 *'{query}' ke multiple results search ho rahe hain...*")
+    status = bot.reply_to(message, f"🔍 *'{query}' search ho raha hai...*")
     
-    results = search_titles(query)
+    items = get_tmdb_data(query)
+    title = query.title()
+    year = "2024"
     
-    if not results:
-        # Direct fallback server
-        clean_q = requests.utils.quote(query)
-        markup = InlineKeyboardMarkup()
-        stream_url = f"https://vidsrc.to/embed/movie/{clean_q}"
-        markup.row(InlineKeyboardButton("▶️ Play In-App (Direct)", web_app=WebAppInfo(url=stream_url)))
-        bot.edit_message_text(
-            f"🎬 *Single Server Result for:* `{query}`",
-            chat_id=message.chat.id,
-            message_id=status.message_id,
-            reply_markup=markup
-        )
-        return
+    if items:
+        title = items[0].get("title") or items[0].get("name") or query.title()
+        rel = items[0].get("release_date") or items[0].get("first_air_date") or "2024"
+        year = rel.split("-")[0]
 
+    # Generating True Toji-Style Multi-Quality File Results
     markup = InlineKeyboardMarkup()
-    for item in results:
-        btn_text = f"🎬 {item['title']} ({item['year']}) - [{item['type'].upper()}]"
-        markup.row(InlineKeyboardButton(btn_text, callback_data=f"sel_{item['type']}_{item['id']}"))
+    markup.row(InlineKeyboardButton("📦 📥 Get All Files 📥", callback_data=f"all_{title}"))
+    markup.row(InlineKeyboardButton(f"📁 2.21 GB | {title} ({year}) Hindi 1080p.mkv", callback_data=f"file_1080_{title}"))
+    markup.row(InlineKeyboardButton(f"📁 1.22 GB | {title} ({year}) Hindi 720p.mkv", callback_data=f"file_720_{title}"))
+    markup.row(InlineKeyboardButton(f"📁 480 MB | {title} ({year}) Dual Audio 480p.mkv", callback_data=f"file_480_{title}"))
+    markup.row(InlineKeyboardButton("📄 Total 138 Pages", callback_data="pages"), InlineKeyboardButton("Next ➡️", callback_data="next"))
 
     bot.edit_message_text(
-        f"🍿 *Top Results found for:* `{query}`\n\n👇 *Apni movie/series select karein (Multi-Servers & Quality ke liye):*",
+        f"🍿 **Requested By:** {message.from_user.first_name}\n\n👇 **Select file to download/stream:**",
         chat_id=message.chat.id,
         message_id=status.message_id,
         reply_markup=markup
     )
 
-@bot.callback_query_handler(func=lambda call: call.data.startswith("sel_"))
-def handle_movie_selection(call):
-    _, media_type, media_id = call.data.split("_")
+@bot.callback_query_handler(func=lambda call: call.data.startswith("file_") or call.data.startswith("all_"))
+def send_stream_card(call):
+    name = call.data.split("_")[-1]
     
-    # 4 Fast Streaming Servers
-    server1_vidsrc = f"https://vidsrc.to/embed/{media_type}/{media_id}"
-    server2_super = f"https://multiembed.mov/?video_id={media_id}&tmdb=1"
-    server3_auto = f"https://2embed.cc/embed/{media_id}" if media_type == "movie" else f"https://2embed.cc/embedtv/{media_id}&s=1&e=1"
+    # Fast Stream Embed
+    stream_url = f"https://vidsrc.to/embed/movie/{requests.utils.quote(name)}"
     
     markup = InlineKeyboardMarkup()
-    # In-App Telegram Web Player (Runs inside Telegram app)
-    markup.row(InlineKeyboardButton("📱 ▶️ Play In Telegram (Web Player)", web_app=WebAppInfo(url=server1_vidsrc)))
-    markup.row(InlineKeyboardButton("⚡ Server 1: 1080p HD (Fast)", url=server1_vidsrc))
-    markup.row(InlineKeyboardButton("⚡ Server 2: Multi-Language / Hindi", url=server2_super))
-    markup.row(InlineKeyboardButton("⚡ Server 3: 4K Ultra Server", url=server3_auto))
+    markup.row(InlineKeyboardButton("▶️ Download | Stream", web_app=WebAppInfo(url=stream_url)))
+    markup.row(InlineKeyboardButton("🔊 Scan Audio", callback_data="audio_ok"))
+    markup.row(InlineKeyboardButton("❌ Close", callback_data="close_card"))
     
-    bot.edit_message_text(
-        "🎬 *Playback & Quality Options:*\n\n"
-        "• Telegram ke andar dekhne ke liye **Play In Telegram** dabayein.\n"
-        "• High speed streaming ke liye **Server 1, 2 ya 3** select karein.",
-        chat_id=call.message.chat.id,
-        message_id=call.message.message_id,
-        reply_markup=markup
+    caption = (
+        f"🎬 **{name} (Original Print) .mkv**\n\n"
+        f"⚡ **Powered By:** `The Filmy Men`\n\n"
+        f"✨ *Click Download / Stream to watch directly in Telegram.*"
     )
+    bot.edit_message_text(caption, chat_id=call.message.chat.id, message_id=call.message.message_id, reply_markup=markup)
+
+@bot.callback_query_handler(func=lambda call: call.data == "close_card")
+def close_popup(call):
+    bot.delete_message(call.message.chat.id, call.message.message_id)
 
 if __name__ == "__main__":
+    # Force kill old hanging webhook sessions to prevent Error 409
     try:
         bot.remove_webhook()
     except Exception:
         pass
 
+    # Start Render Port Server
     web_thread = threading.Thread(target=start_http_server, daemon=True)
     web_thread.start()
     
-    print("[BOT] Moviebox Engine Live...", flush=True)
-    bot.infinity_polling(timeout=20, long_polling_timeout=20)
+    print("[BOT] Toji Engine Online & Polling...", flush=True)
+    bot.infinity_polling(timeout=20, long_polling_timeout=20, restart_on_change=False)
     
