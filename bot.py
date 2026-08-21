@@ -5,17 +5,17 @@ from aiohttp import web
 from pyrogram import Client, filters, idle
 from pyrogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
-# Telegram Credentials
+# Exact Credentials from Screenshot
 API_ID = 38398715
 API_HASH = "6d70e41f8c67908ed547e31c2cfe9c3a"
 BOT_TOKEN = "7843197474:AAHB-SHdt3XsSk_ZULtkwYvTSa-BIQ_DAKc"
 PORT = int(os.environ.get("PORT", 8080))
 
-bot = Client("toji_shins_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+bot = Client("toji_movie_engine", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-# Health check route for Render
+# Health Check server for Render
 async def handle_ping(request):
-    return web.Response(text="Server is healthy and running!", status=200)
+    return web.Response(text="Movie Bot Engine is Online!", status=200)
 
 def search_shins_moviebox(query):
     try:
@@ -29,8 +29,8 @@ def search_shins_moviebox(query):
 @bot.on_message(filters.command("start") & filters.private)
 async def start_cmd(c, m):
     await m.reply_text(
-        "🥷 **#Toji Shins Movie Engine Online**\n\n"
-        "🍿 *Kisi bhi movie ya series ka naam bhejein:*"
+        "🥷 **#Toji Movie Engine Online**\n\n"
+        "🍿 *Kisi bhi movie ya series ka naam likhkar bhejein:*"
     )
 
 @bot.on_message(filters.private & ~filters.command("start"))
@@ -55,10 +55,10 @@ async def handle_search(c, m):
             buttons.append([InlineKeyboardButton(f"🎬 {short_title} ({media_type.upper()})", url=stream_url)])
     
     if not buttons:
-        return await status_msg.edit_text("❌ **Koi playable file nahi mili!**")
+        return await status_msg.edit_text("❌ **Koi playable stream nahi mila!**")
         
     await status_msg.edit_text(
-        f"🍿 **Results for:** `{query}`\n\n⚡ *Source: Shins Cloud Network*",
+        f"🍿 **Results for:** `{query}`\n\n⚡ *Source: Multi-Cloud Streaming Engine*",
         reply_markup=InlineKeyboardMarkup(buttons)
     )
 
@@ -73,7 +73,7 @@ async def start_web_server():
 async def main():
     await start_web_server()
     await bot.start()
-    print(">>> All Services Started!")
+    print(">>> Bot Started Successfully!")
     await idle()
     await bot.stop()
 
